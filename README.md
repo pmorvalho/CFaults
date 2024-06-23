@@ -8,6 +8,8 @@ CFaults introduces a novel formula-based fault localization technique for C prog
 
 GitHub URL: https://github.com/pmorvalho/CFaults/
 
+Zenodo DOI: https://doi.org/10.5281/zenodo.12384842
+
 ## REQUIREMENTS
 
 All requirements are installed in the Docker image available on Zenodo. Nevertheless, the script `config.sh` executes the commands to install all requirements.
@@ -26,7 +28,7 @@ Requirements:
 - RAM: 64 GB
 - Time Limit: 3600s
 - CPUs: at least 40
-- Total time: ~44 hours
+- Total time: ~45 hours
 
 CFaults has been evaluated using two benchmarks of C programs: _TCAS_ [2] and _C-Pack-IPAs_ [3]:
 
@@ -48,7 +50,7 @@ Number of runs:
   - Each program is analyzed 4 times, one for each FBFL approach (1944 runs).
   - This benchmark contains 10 programming exercises from 3 academic years (30 subsets of programs). We call the FBFL tools in parallel 30 times, once for all the programs in a given programming exercise (10 exercises) from a given academic year (3 years).
 
-In our experiments, **using a time limit of 3600s, took us ~44 hours to compute everything**, calling each programming exercise of C-Pack-IPAs in parallel and using 40 CPUs.
+In our experiments, **using a time limit of 3600s, took us ~45 hours to compute everything**, calling each programming exercise of C-Pack-IPAs in parallel and using 40 CPUs.
 
 ### SUBSET OF EXPERIMENTS
 
@@ -75,22 +77,22 @@ To run the motivating example from our paper:
 
 #### CFaults
 ```
-./CFaults.sh -i examples/fm2024_example.c -o motivating_example_output -nu 3 -e lab02/ex01 -v
+./CFaults.sh -i examples/fm2024_example.c -o motivating_example_CFaults -nu 3 -e lab02/ex01 -v
 ```
 
 #### CFaults-Refined
 ```
-./CFaults.sh -i examples/fm2024_example.c -o motivating_example_output -nu 3 -e lab02/ex01 -ss -v
+./CFaults.sh -i examples/fm2024_example.c -o motivating_example_CFaults-Refined -nu 3 -e lab02/ex01 -ss -v
 ```
 
 #### BugAssist
 ```
-./BugAssist.sh -i examples/fm2024_example.c -o motivating_example_output -nu 3 -e lab02/ex01 -v
+./BugAssist.sh -i examples/fm2024_example.c -o motivating_example_BugAssist -nu 3 -e lab02/ex01 -v
 ```
 
 #### SNIPER
 ```
-./SNIPER.sh -i examples/fm2024_example.c -o motivating_example_output -nu 3 -e lab02/ex01 -v
+./SNIPER.sh -i examples/fm2024_example.c -o motivating_example_SNIPER -nu 3 -e lab02/ex01 -v
 ```
 
 ### OPTION #2 (OUR RECOMMENDATION) 
@@ -113,7 +115,7 @@ bash run_subset.sh 180
 
 ### OPTION #4
 
-This corresponds to our paper's evaluation. To run all FBFL approaches on the entire benchmarks of programs (TCAS and C-Pack-IPAs), and reproduce the results section in the paper, use the script run_all.sh: (takes at most 44 hours)
+This corresponds to our paper's evaluation. To run all FBFL approaches on the entire benchmarks of programs (TCAS and C-Pack-IPAs), and reproduce the results section in the paper, use the script run_all.sh: (takes around 45 hours)
 
 ```
 bash run_all.sh

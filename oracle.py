@@ -301,7 +301,7 @@ if __name__ == '__main__':
     if "_" in stu_id[-1] and len(stu_id) > 4:
         i = stu_id[-1].split("-")
         stu_id = "{y}#{l}/{e}#{s}#{su}".format(y=stu_id[-5],l=stu_id[-4],e=i[-3],s=i[-2],su=i[-1])
-    elif (args.bug_assist or args.sniper) and len(stu_id) > 2 and "_" in stu_id[-3]:
+    elif (args.bug_assist or args.sniper) and len(stu_id) > 5 and "_" in stu_id[-3]:
         i = stu_id[-3].split("-")
         stu_id = "{y}#{l}/{e}#{s}#{su}".format(y=stu_id[-6],l=stu_id[-5],e=stu_id[-4],s=i[-2],su=i[-1])   
     elif (args.bug_assist or args.sniper) and len(stu_id) > 2:

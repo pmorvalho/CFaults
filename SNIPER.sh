@@ -12,7 +12,188 @@ dataset="C-Pack-IPAs"
 dataset_dir="C-Pack-IPAs"
 labs=("lab02")
 years=("year-1" "year-2" "year-3")
-tests_dir="tecbmc/src/cbmc/cbmc $1 prints.c --dimacs --16 --unwind $NUM_UNROLL --outfile $2".cnf"
+tests_dir="tests_updated"
+TIMEOUT=3600s
+MEMOUT=32000
+ftype="wcnf"
+tmp_dir="results"
+CPACKIPAS=1
+TCAS=0
+
+sanity_check(){
+    if [[ $VERBOSE ]];
+    then
+	echo "Starting sanity check"
+    fi
+    if [[ $CORRECT_PROG == 1 ]];
+    then
+	tests_flags=" -upt -hw "
+	if [[ $TCAS == 1 ]];
+	then
+	    tests_flags=$tests_flags" --test_dir $dataset_dir --traces_dir $traces_dir/$p"
+	else
+	    tests_flags=$tests_flags" -e $IPA "
+	fi
+    else
+	if [[ $TCAS == 1 ]];
+	then
+	    tests_flags=" --test_dir $dataset_dir --traces_dir $traces_dir/$p -hw "
+	else
+	    tests_flags=" -t $tests_2_use -e $IPA -hw "
+	    # tests_flags=" -upt -e $IPA -hw "	    
+	fi
+    fi    
+    mkdir -p $d/faults
+    cp prints.* $d/faults/.
+    for ((faults_index=0; ; faults_index++));
+    do
+	if [[ $VERBOSE ]];
+	then
+	    echo "Faults index: $faults_index"
+	fi
+	new_p=$d/"faults"/$p"_faults-$faults_index.c"
+	stmts_map=$d/"faults/$faults_index.pkl.gz"
+	# we need to use -ba in order not to introduce nondeterminism in the program
+	python3 program_instrumentalizer.py -ip $prog -o $new_p $tests_flags -msi $stmts_map -nu $NUM_UNROLL -ssv $faults_dict -fi $faults_index >& $d/"faults"/$p.pi-$faults_index-out
+       
+	if [[ ! ($? -eq 0) && $(grep "No more faults to relax!" $d/"faults"/$p.pi-$faults_index-out) != "" ]];
+        then	    	    
+	    echo "Could not find any faulty statements!"
+	    echo
+	    
+	    if [[ $VERBOSE ]];
+	    then
+		echo "#Attempts: $faults_index"
+		if [[ $CORRECT_PROG == 1 && $faults_index -eq 0 ]];
+		then
+		    echo "After checking $faults_index possible sets of faults."
+		    echo "SUCCESS"
+		    exit
+		fi
+		echo "FAILED"
+	    fi
+	    echo
+	    return;
+        fi
+        aux_dir=$d"/faults/cbmc-$faults_index"
+	mkdir -p $aux_dir
+	runsolver/src/runsolver -o $aux_dir/out.o -w $aux_dir/watcher.w -v $aux_dir/var.v -W $TIMEOUT --rss-swap-limit $MEMOUT cbmc/src/cbmc/cbmc $new_p prints.c --16 --unwind $NUM_UNROLL
+	if [[ $(grep "FAILURE" $aux_dir/out.o) == "" ]];
+        then
+	    continue;
+	fi
+	if [[ $VERBOSE ]];
+	then
+	    flag_verb=" -v "
+	    echo "After checking $faults_index possible sets of faults."
+	    echo "#Attempts: $faults_index"
+	fi
+	python3 get_faulty_statements.py -d $faults_dict -fi $faults_index -id $p $flag_verb --sniper | tee -a $output_dir/$p.fdbk
+	if [[ $VERBOSE ]];
+	then
+	    echo "SUCCESS"
+	fi	
+	exit
+    done
+    echo
+}
+
+CBMC_bounds_check(){
+    # $1 program on which we are going to run CBMC
+    # $2 dir
+    # $3 filename
+
+    aux_dir=$2"/cbmc-2nd"
+    if [[ ! -d $aux_dir ]];
+    then
+       mkdir -p $aux_dir
+    fi
+    runsolver/src/runsolver -o $aux_dir/out.o -w $aux_dir/watcher.w -v $aux_dir/var.v -W $TIMEOUT --rss-swap-limit $MEMOUT \
+ 				  timeout $TIMEOUT cbmc/src/cbmc/cbmc $1 --16 --unwind $NUM_UNROLL --bounds-check
+    if [[ $(grep "TIMEOUT=t" $aux_dir"/var.v" ) ]]; then
+	echo "Timeout running CBMC on $1 (Checking Memory Accesses)" | tee -a $3.fdbk
+	exit
+    fi
+    out_of_bounds=$(grep -r ".*array_bounds.* FAILURE" $aux_dir"/out.o" | grep -v "output")
+    if [[ $out_of_bounds ]];
+    then 
+	if [[ $(echo $out_of_bounds | grep  "__input") ]];
+	then
+	    echo "$2: Scanf is accessing out-of-bound memory!" | tee -a $3.fdbk
+	else
+	    echo "$2: Some array is accessing out-of-bound memory!"	 | tee -a $3.fdbk
+	fi
+	#exit
+    fi    
+}
+
+Oracle(){
+    # $1 filename
+    # $2 mapping from instumentalized instructions to the students' instructions (pickle gzip)
+    # $3 dir
+    # $4 previous dir (to store the localized faults dict)
+    # $5 t_num
+    
+    aux_dir=$3"/oracle"
+    if [[ ! -d $aux_dir ]];
+    then
+       mkdir -p $aux_dir
+    fi
+    runsolver/src/runsolver -o $aux_dir/out.o -w $aux_dir/watcher.w -v $aux_dir/var.v -W $TIMEOUT --rss-swap-limit $MEMOUT python3 oracle.py --$ftype $1"."$ftype -msi $2 --sniper -t $t_num --faults_dict $4
+    if [[ $? = 0 ]]; then
+	if [[ $(grep "TIMEOUT=t" $aux_dir/var.v) ]]; then	
+	    gzip -f $1"."$ftype	
+	    echo "Timeout solving $ftype formulae $1."$ftype
+	    echo "Timeout running RC2" > $1.fdbk
+	    exit
+	fi
+    else
+	echo "Error while running RC2 on formulae $1."$ftype
+	echo "Error while running RC2" > $1.fdbk
+	exit
+    fi
+    gzip -f $1"."$ftype &
+    if [[ $(grep "UNSAT" $aux_dir"/out.o") ]]; then
+	echo "UNSAT formulae $1."$ftype
+	echo "UNSAT WCNF formula" > $1.fdbk
+	exit
+    else
+	cost=$(cat $aux_dir"/out.o" | grep -oh "\#Bugs: [0-9]*" | head -1 | grep -oh "[0-9]*" )
+	if [[ $cost == "" ]];
+	then
+	    cost="0"
+	fi	
+	echo $cost	
+   fi
+}
+
+
+cnf_2_wcnf_translation(){
+    # $1 CNF filename
+    # $2 mapping from instumentalized instructions to the students' instructions (pickle gzip)
+    
+    if [[ $ftype == "pwcnf" ]];
+    then
+	python3 cnf_2_relaxed_wcnf.py -i $1".cnf" -p  -o $1"."$ftype -msi $2 -nu $NUM_UNROLL
+    else
+	python3 cnf_2_relaxed_wcnf.py -i $1".cnf" -o $1"."$ftype -msi $2 -nu $NUM_UNROLL
+    fi
+    gzip -f $1".cnf" &
+}
+
+
+CBMC(){
+    # $1 program on which we are going to run CBMC
+    # $2 output filename
+    # $3 dir
+
+    aux_dir=$3"/cbmc"
+    if [[ ! -d $aux_dir ]];
+    then
+       mkdir -p $aux_dir
+    fi
+    runsolver/src/runsolver -o $aux_dir/out.o -w $aux_dir/watcher.w -v $aux_dir/var.v -W $TIMEOUT --rss-swap-limit $MEMOUT \
+    cbmc/src/cbmc/cbmc $1 prints.c --dimacs --16 --unwind $NUM_UNROLL --outfile $2".cnf"
     if [[ $(grep "TIMEOUT=t" $aux_dir/var.v) ]]; then
 	echo "Timeout running CBMC on $1"
 	echo "Timeout running CBMC" > $2.fdbk
@@ -310,7 +491,6 @@ case $key in
 	--> -h|--help -- to print this message
 	--> -i|--input program.c|circuit.wcnf  -- the path to the input program/wcnf formula"
 	exit
-	# --> -a|--enum_all -- Enumerates all the WCNF solutions, even the ones with nonoptimum cost.	
     shift
     ;;
     *)

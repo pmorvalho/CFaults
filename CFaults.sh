@@ -504,6 +504,7 @@ case $key in
 esac
 done
 
+
 if [[ $ISCAS == 0 ]];
 then
     CFaults_pipeline

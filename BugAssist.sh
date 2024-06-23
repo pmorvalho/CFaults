@@ -474,7 +474,6 @@ case $key in
 	--> -h|--help -- to print this message
 	--> -i|--input program.c|circuit.wcnf  -- the path to the input program/wcnf formula"
 	exit
-	#  [--iscas] --> --iscas -- To run BugAssist on ICAS85 bechmark. In this benchmark, BugAssist only runs the MaxSAT oracle on this benchmark.
     shift
     ;;
     *)
@@ -487,11 +486,6 @@ case $key in
 esac
 done
 
-# if [[ $ISCAS == 0 ]];
-# then
-    BugAssist_pipeline
-# else
-#     BugAssist_pipeline_4_ISCAS
-# fi
+BugAssist_pipeline
 
 
