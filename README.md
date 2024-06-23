@@ -4,11 +4,7 @@ This is the implementation of _CFaults: Model-Based Diagnosis for Fault Localiza
 
 CFaults introduces a novel formula-based fault localization technique for C programs capable of addressing any number of faults. Leveraging Model-Based Diagnosis (MBD) with multiple observations, CFaults consolidates all failing test cases into a unified MaxSAT formula, ensuring consistency in the fault localization process. In our paper, we show that CFaults only generates minimal diagnoses of faulty statements, while other formula-based fault localization methods tend to produce redundant diagnoses.
 
-## LINK
-
-GitHub URL: https://github.com/pmorvalho/CFaults/
-
-Zenodo DOI: https://doi.org/10.5281/zenodo.12384842
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12510220.svg)](https://doi.org/10.5281/zenodo.12510220)
 
 ## REQUIREMENTS
 
@@ -257,7 +253,7 @@ All the following scripts can be run with the -h flag to display a help message.
   
 ## AVAILABILITY
 
-The source code for CFaults is also publicly available at https://github.com/pmorvalho/CFaults
+The source code for CFaults is also publicly available at [https://github.com/pmorvalho/CFaults](https://github.com/pmorvalho/CFaults)
 
 This repository should not be used to reproduce the artifact, but it contains the current version of the tool and will continue to be developed and shared with the research community.
 
